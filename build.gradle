@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+    id 'io.qameta.allure' version '2.12.0'
+}
+
+group = 'ru.netology'
+version = '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = 11
+}
+compileJava.options.encoding = "UTF-8"
+compileTestJava.options.encoding = "UTF-8"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testImplementation 'org.junit.vintage:junit-vintage-engine:5.10.2'
+    testImplementation 'mysql:mysql-connector-java:8.0.33'
+    testImplementation 'com.codeborne:selenide:6.19.1'
+    testImplementation 'com.github.javafaker:javafaker:1.0.2'
+    testImplementation 'io.rest-assured:rest-assured:5.3.2'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'commons-dbutils:commons-dbutils:1.7'
+    testImplementation 'org.projectlombok:lombok:1.18.42'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.42'
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.3'
+    testImplementation 'io.qameta.allure:allure-junit5:2.27.0'
+    testImplementation 'io.qameta.allure:allure-selenide:2.27.0'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'selenide.headless', System.getProperty('selenide.headless')
+    systemProperty 'db.url', System.getProperty('db.url', "jdbc:mysql://localhost:3306/aqashop")
+    systemProperty 'chromeoptions.prefs', System.getProperty('chromeoptions.prefs',
+            "profile.password_manager_leak_detection=false")
+    systemProperty 'allure.results.directory', 'build/allure-results'
+}
