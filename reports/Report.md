@@ -40,7 +40,7 @@
 
 По итогам выполнения тестов сформирован отчет Allure Report:
 
-![Allure Report](reports/AllureReport.png)
+![Allure Report](https://github.com/ValentinKnArt30/kursovaya/blob/main/reports/AllureReport.png)
 
 ---
 
