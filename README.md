@@ -712,3 +712,4 @@ reports
 Использование разрешено без ограничений.
 
 ---
+[![kursovaya](https://github.com/ValentinKnArt30/kursovaya/actions/workflows/gradle.yml/badge.svg)](https://github.com/ValentinKnArt30/kursovaya/actions/workflows/gradle.yml) [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/ValentinKnArt30/kursovaya?svg=true&passingText=OK&failingText=FAIL)](https://ci.appveyor.com/project/ValentinKnArt30/kursovaya)
