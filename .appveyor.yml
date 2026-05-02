@@ -1,0 +1,71 @@
+image: Ubuntu
+
+stack: jdk 11
+
+branches:
+  only:
+    - main
+
+build: off
+
+environment:
+  matrix:
+    - db: MySQL
+    - db: PostgreSQL
+
+for:
+  -
+    matrix:
+      only:
+        - db: MySQL
+
+    install:
+      - docker --version
+      - docker compose version
+
+      - docker compose up -d mysql
+      - sleep 25
+
+      - java -Ddb.url=jdbc:mysql://localhost:3306/aqashop \
+        -Ddb.user=test \
+        -Ddb.password=test \
+        -jar aqa-shop.jar &
+      - sleep 25
+
+    build_script:
+      - chmod +x gradlew
+      - ./gradlew test --info \
+        -Dselenide.headless=true \
+        -Ddb.url=jdbc:mysql://localhost:3306/aqashop \
+        -Ddb.user=test \
+        -Ddb.password=test
+
+      - docker compose down
+
+  -
+    matrix:
+      only:
+        - db: PostgreSQL
+
+    install:
+      - docker --version
+      - docker compose version
+
+      - docker compose up -d postgres
+      - sleep 25
+
+      - java -Ddb.url=jdbc:postgresql://localhost:5432/aqashop \
+        -Ddb.user=test \
+        -Ddb.password=test \
+        -jar aqa-shop.jar &
+      - sleep 25
+
+    build_script:
+      - chmod +x gradlew
+      - ./gradlew test --info \
+        -Dselenide.headless=true \
+        -Ddb.url=jdbc:postgresql://localhost:5432/aqashop \
+        -Ddb.user=test \
+        -Ddb.password=test
+
+      - docker compose down
