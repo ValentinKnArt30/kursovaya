@@ -13,97 +13,77 @@ public class PaymentPage {
 
     private final SelenideElement form = $("form");
 
-    // --- Проверка страницы ---
+    private final SelenideElement cardNumberField =
+            form.$("[placeholder='0000 0000 0000 0000']");
+
+    private final SelenideElement monthField =
+            form.$("[placeholder='08']");
+
+    private final SelenideElement yearField =
+            form.$("[placeholder='22']");
+
+    private final SelenideElement ownerField =
+            form.$$("span.input__top")
+                    .findBy(Condition.text("Владелец"))
+                    .closest(".input")
+                    .$("[type='text']");
+
+    private final SelenideElement cvcField =
+            form.$("[placeholder='999']");
+
+    private final SelenideElement continueButton =
+            $$("button").findBy(Condition.text("Продолжить"));
+
+    private final SelenideElement loadingButton =
+            $$("button.button")
+                    .findBy(Condition.text("Отправляем запрос в Банк..."));
+
+    private final SelenideElement successNotification =
+            $(".notification_status_ok");
+
+    private final SelenideElement errorNotification =
+            $(".notification_status_error");
+
+    // --- ПРОВЕРКА СТРАНИЦЫ ---
     public void verifyPageVisible() {
         $$("h3.heading.heading_size_m")
                 .findBy(Condition.exactText("Оплата по карте"))
                 .shouldBe(visible, Duration.ofSeconds(10));
     }
 
-    // --- Поля ---
-    public SelenideElement cardNumberField() {
-        return form.$("[placeholder='0000 0000 0000 0000']")
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    public SelenideElement monthField() {
-        return form.$("[placeholder='08']")
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    public SelenideElement yearField() {
-        return form.$("[placeholder='22']")
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    public SelenideElement ownerField() {
-        return form.$$("span.input__top")
-                .findBy(Condition.text("Владелец"))
-                .closest(".input")
-                .$("[type='text']");
-    }
-
-    public SelenideElement cvcField() {
-        return form.$("[placeholder='999']")
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    // --- Кнопка ---
-    private SelenideElement continueButton() {
-        return $$("button")
-                .findBy(Condition.text("Продолжить"))
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    // --- Состояние кнопки ---
-    private SelenideElement loadingButton() {
-        return $$("button.button")
-                .findBy(Condition.text("Отправляем запрос в Банк..."))
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    // --- Уведомления ---
-    private SelenideElement successNotification() {
-        return $(".notification_status_ok")
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    private SelenideElement errorNotification() {
-        return $(".notification_status_error")
-                .shouldBe(visible, Duration.ofSeconds(10));
-    }
-
-    // --- Действия ---
+    // --- ДЕЙСТВИЯ ---
     public PaymentPage fillCardForm(DataGenerator.CardData data) {
-        cardNumberField().setValue(data.number);
-        monthField().setValue(data.month);
-        yearField().setValue(data.year);
-        ownerField().setValue(data.owner);
-        cvcField().setValue(data.cvc);
+        cardNumberField.setValue(data.getNumber());
+        monthField.setValue(data.getMonth());
+        yearField.setValue(data.getYear());
+        ownerField.setValue(data.getOwner());
+        cvcField.setValue(data.getCvc());
         return this;
     }
 
     public PaymentPage submit() {
-        continueButton().click();
+        continueButton.click();
         return this;
     }
 
-    // --- Проверки ---
+    // --- ПРОВЕРКИ ---
     public void shouldSeeSuccess() {
-        SelenideElement success = $(".notification_status_ok")
-                .shouldBe(Condition.visible, Duration.ofSeconds(15));
-        successNotification().$(".notification__title")
+        successNotification.shouldBe(visible, Duration.ofSeconds(15));
+
+        successNotification.$(".notification__title")
                 .shouldHave(Condition.exactText("Успешно"));
-        successNotification().$(".notification__content")
+
+        successNotification.$(".notification__content")
                 .shouldHave(Condition.text("Операция одобрена Банком."));
     }
 
     public void shouldSeeError() {
-        SelenideElement error = $(".notification_status_error")
-                .shouldBe(Condition.visible, Duration.ofSeconds(15));
-        errorNotification().$(".notification__title")
+        errorNotification.shouldBe(visible, Duration.ofSeconds(15));
+
+        errorNotification.$(".notification__title")
                 .shouldHave(Condition.exactText("Ошибка"));
-        errorNotification().$(".notification__content")
+
+        errorNotification.$(".notification__content")
                 .shouldHave(Condition.text("Ошибка! Банк отказал в проведении операции."));
     }
 
@@ -115,28 +95,42 @@ public class PaymentPage {
     }
 
     public void shouldShowLoadingState() {
-        loadingButton().shouldBe(Condition.disabled);
-        loadingButton().$(".spin").shouldBe(visible);
+        loadingButton.shouldBe(Condition.disabled);
+        loadingButton.$(".spin").shouldBe(visible);
     }
 
-    // --- Геттеры для полей ---
-    public SelenideElement getCardField() {
-        return cardNumberField();
+    public void shouldSeeCardFieldError(String message) {
+        cardNumberField.closest(".input")
+                .$(".input__sub")
+                .shouldBe(visible, Duration.ofSeconds(5))
+                .shouldHave(Condition.text(message));
     }
 
-    public SelenideElement getMonthField() {
-        return monthField();
+    public void shouldSeeMonthFieldError(String message) {
+        monthField.closest(".input")
+                .$(".input__sub")
+                .shouldBe(visible, Duration.ofSeconds(5))
+                .shouldHave(Condition.text(message));
     }
 
-    public SelenideElement getYearField() {
-        return yearField();
+    public void shouldSeeYearFieldError(String message) {
+        yearField.closest(".input")
+                .$(".input__sub")
+                .shouldBe(visible, Duration.ofSeconds(5))
+                .shouldHave(Condition.text(message));
     }
 
-    public SelenideElement getOwnerField() {
-        return ownerField();
+    public void shouldSeeCvcFieldError(String message) {
+        cvcField.closest(".input")
+                .$(".input__sub")
+                .shouldBe(visible, Duration.ofSeconds(5))
+                .shouldHave(Condition.text(message));
     }
 
-    public SelenideElement getCvcField() {
-        return cvcField();
+    public void shouldSeeOwnerFieldError(String message) {
+        ownerField.closest(".input")
+                .$(".input__sub")
+                .shouldBe(visible, Duration.ofSeconds(5))
+                .shouldHave(Condition.text(message));
     }
 }

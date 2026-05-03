@@ -7,12 +7,13 @@ import io.qameta.allure.Story;
 import io.qameta.allure.selenide.AllureSelenide;
 import org.junit.jupiter.api.*;
 import ru.netology.data.DataGenerator;
+import ru.netology.data.SQL;
 import ru.netology.pages.CreditPage;
 import ru.netology.pages.MainPage;
 import ru.netology.pages.PaymentPage;
-import ru.netology.data.SQL;
 
 import static com.codeborne.selenide.Selenide.open;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("UI тесты оплаты тура")
 @Feature("Оплата картой")
@@ -41,14 +42,14 @@ public class UITest {
     // Вспомогательные методы
     // ----------------------
 
-    @Step("Открыть форму оплаты картой")
+    @Step("Открыть оплату картой")
     void openPayment() {
         var mainPage = new MainPage();
         paymentPage = mainPage.clickButtonPay();
         paymentPage.verifyPageVisible();
     }
 
-    @Step("Открыть форму оплаты кредитом")
+    @Step("Открыть кредит")
     void openCredit() {
         var mainPage = new MainPage();
         creditPage = mainPage.clickButtonCredit();
@@ -76,8 +77,19 @@ public class UITest {
     @DisplayName("1. Успешная оплата APPROVED картой")
     void shouldPayWithApprovedCard() {
         var data = DataGenerator.approvedCard();
+
         fillAndSubmitPayment(data);
+
         paymentPage.shouldSeeSuccess();
+
+        var payments = SQL.getPayments();
+        var orders = SQL.getOrders();
+
+        assertAll(
+                () -> assertEquals(1, payments.size()),
+                () -> assertEquals("APPROVED", payments.get(0).getStatus()),
+                () -> assertEquals(1, orders.size())
+        );
     }
 
     @Test
@@ -85,8 +97,19 @@ public class UITest {
     @DisplayName("2. Успешный кредит APPROVED картой")
     void shouldPayCreditWithApprovedCard() {
         var data = DataGenerator.approvedCard();
+
         fillAndSubmitCredit(data);
+
         creditPage.shouldSeeSuccess();
+
+        var credits = SQL.getCreditsRequest();
+        var orders = SQL.getOrders();
+
+        assertAll(
+                () -> assertEquals(1, credits.size()),
+                () -> assertEquals("APPROVED", credits.get(0).getStatus()),
+                () -> assertEquals(1, orders.size())
+        );
     }
 
     // ----------------------
@@ -97,16 +120,38 @@ public class UITest {
     @DisplayName("3. Отказ в оплате DECLINED картой")
     void shouldDeclinePaymentWithDeclinedCard() {
         var data = DataGenerator.declinedCard();
+
         fillAndSubmitPayment(data);
+
         paymentPage.shouldSeeError();
+
+        var payments = SQL.getPayments();
+        var orders = SQL.getOrders();
+
+        assertAll(
+                () -> assertEquals(1, payments.size()),
+                () -> assertEquals("DECLINED", payments.get(0).getStatus()),
+                () -> assertEquals(1, orders.size())
+        );
     }
 
     @Test
     @DisplayName("4. Отказ в кредите DECLINED картой")
     void shouldDeclineCreditWithDeclinedCard() {
         var data = DataGenerator.declinedCard();
+
         fillAndSubmitCredit(data);
+
         creditPage.shouldSeeError();
+
+        var credits = SQL.getCreditsRequest();
+        var orders = SQL.getOrders();
+
+        assertAll(
+                () -> assertEquals(1, credits.size()),
+                () -> assertEquals("DECLINED", credits.get(0).getStatus()),
+                () -> assertEquals(1, orders.size())
+        );
     }
 
     // ----------------------
@@ -114,73 +159,76 @@ public class UITest {
     // ----------------------
 
     @Test
-    @DisplayName("5. Карта с невалидным номером отклоняется банком")
+    @DisplayName("5. Невалидный номер карты")
     void shouldErrorInvalidCardNumber() {
-        var data = new DataGenerator.CardData("1234 5678 9012 3450",
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeError();
+        fillAndSubmitPayment(new DataGenerator.CardData(
+                DataGenerator.invalidCardNumber(),
+                DataGenerator.validMonth(),
+                DataGenerator.validYear(),
+                DataGenerator.owner(),
+                DataGenerator.validCvc()
+        ));
+        paymentPage.shouldSeeCardFieldError("Неверный формат");
     }
 
     @Test
-    @DisplayName("6. Номер карты с пробелами")
+    @DisplayName("6. Короткий номер карты")
+    void shouldErrorShortCardNumber() {
+        fillAndSubmitPayment(new DataGenerator.CardData(
+                DataGenerator.shortCardNumber(),
+                DataGenerator.validMonth(),
+                DataGenerator.validYear(),
+                DataGenerator.owner(),
+                DataGenerator.validCvc()
+        ));
+        paymentPage.shouldSeeCardFieldError("Номер карты должен содержать 16 цифр");
+    }
+
+    @Test
+    @DisplayName("7. Длинный номер карты")
+    void shouldErrorLongCardNumber() {
+        fillAndSubmitPayment(new DataGenerator.CardData(
+                DataGenerator.longCardNumber(),
+                DataGenerator.validMonth(),
+                DataGenerator.validYear(),
+                DataGenerator.owner(),
+                DataGenerator.validCvc()
+        ));
+        paymentPage.shouldSeeCardFieldError("Номер карты должен содержать 16 цифр");
+    }
+
+    @Test
+    @DisplayName("8. Пустой номер карты")
+    void shouldErrorEmptyCardNumber() {
+        fillAndSubmitPayment(new DataGenerator.CardData(
+                DataGenerator.empty(),
+                DataGenerator.validMonth(),
+                DataGenerator.validYear(),
+                DataGenerator.owner(),
+                DataGenerator.validCvc()
+        ));
+        paymentPage.shouldSeeCardFieldError("Поле обязательно для заполнения");
+    }
+
+    @Test
+    @DisplayName("9. Номер с пробелами")
     void shouldAcceptCardNumberWithSpaces() {
-        var data = new DataGenerator.CardData(" 1111 2222 3333 4444 ",
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
+        fillAndSubmitPayment(DataGenerator.cardWithSpaces());
         paymentPage.shouldSeeSuccess();
     }
 
     @Test
-    @DisplayName("7. Спецсимволы в номере карты")
+    @DisplayName("10. Спецсимволы в номере")
     void shouldErrorSpecialSymbolsCardNumber() {
-        var data = new DataGenerator.CardData("#@# $%^ &*()",
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCardField(), "Неверный формат");
+        fillAndSubmitPayment(DataGenerator.cardWithSymbols());
+        paymentPage.shouldSeeCardFieldError("Неверный формат");
     }
 
     @Test
-    @DisplayName("8. Короткий номер карты")
-    void shouldErrorShortCardNumber() {
-        var data = new DataGenerator.CardData("1234 5678 9012",
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCardField(), "Номер карты должен содержать 16 цифр");
-    }
-
-    @Test
-    @DisplayName("9. Длинный номер карты")
-    void shouldErrorLongCardNumber() {
-        var data = new DataGenerator.CardData("1234 5678 9012 3456 7890",
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCardField(), "Номер карты должен содержать 16 цифр");
-    }
-
-    @Test
-    @DisplayName("10. Пустой номер карты")
-    void shouldErrorEmptyCardNumber() {
-        var data = new DataGenerator.CardData("",
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCardField(), "Поле обязательно для заполнения");
-    }
-
-    @Test
-    @DisplayName("11. Ввод в поле номер карты значение placeholder")
-    void shouldShowErrorWhenCardNumberIsEmpty() {
-        var data = new DataGenerator.CardData("0000 0000 0000 0000",
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCardField(), "Неверный формат");
+    @DisplayName("11. Placeholder")
+    void shouldErrorPlaceholderCardNumber() {
+        fillAndSubmitPayment(DataGenerator.placeholderCard());
+        paymentPage.shouldSeeCardFieldError("Неверный формат");
     }
 
     // ----------------------
@@ -188,70 +236,52 @@ public class UITest {
     // ----------------------
 
     @Test
-    @DisplayName("12. Некорректный месяц (13)")
+    @DisplayName("12. Месяц 13")
     void shouldErrorInvalidMonth() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD, "13",
-                DataGenerator.validYear(), DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getMonthField(), "Месяц должен быть от 01 до 12");
+        fillAndSubmitPayment(DataGenerator.cardWithMonth("13"));
+        paymentPage.shouldSeeMonthFieldError("Месяц должен быть от 01 до 12");
     }
 
     @Test
     @DisplayName("13. Буквы в месяце")
     void shouldErrorLettersMonth() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD, "ab",
-                DataGenerator.validYear(), DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getMonthField(), "Неверный формат");
+        fillAndSubmitPayment(DataGenerator.cardWithMonth("ab"));
+        paymentPage.shouldSeeMonthFieldError("Неверный формат");
     }
 
     @Test
     @DisplayName("14. Пустой месяц")
     void shouldErrorEmptyMonth() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD, "",
-                DataGenerator.validYear(), DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getMonthField(), "Поле обязательно для заполнения");
+        fillAndSubmitPayment(DataGenerator.cardWithMonth(""));
+        paymentPage.shouldSeeMonthFieldError("Поле обязательно для заполнения");
     }
 
     @Test
     @DisplayName("15. Просроченный год")
     void shouldErrorExpiredYear() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.expiredYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getYearField(), "Истёк срок действия карты");
+        fillAndSubmitPayment(DataGenerator.cardWithYear(DataGenerator.expiredYear()));
+        paymentPage.shouldSeeYearFieldError("Истёк срок действия карты");
     }
 
     @Test
-    @DisplayName("16. Слишком большой год")
+    @DisplayName("16. Будущий год")
     void shouldErrorTooFutureYear() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.futureYear(),
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getYearField(), "Неверно указан срок");
+        fillAndSubmitPayment(DataGenerator.cardWithYear(DataGenerator.futureYear()));
+        paymentPage.shouldSeeYearFieldError("Неверно указан срок");
     }
 
     @Test
     @DisplayName("17. Буквы в годе")
     void shouldErrorLettersYear() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), "cd",
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getYearField(), "Неверный формат");
+        fillAndSubmitPayment(DataGenerator.cardWithYear("cd"));
+        paymentPage.shouldSeeYearFieldError("Неверный формат");
     }
 
     @Test
     @DisplayName("18. Пустой год")
     void shouldErrorEmptyYear() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), "",
-                DataGenerator.owner(), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getYearField(), "Поле обязательно для заполнения");
+        fillAndSubmitPayment(DataGenerator.cardWithYear(""));
+        paymentPage.shouldSeeYearFieldError("Поле обязательно для заполнения");
     }
 
     // ----------------------
@@ -261,31 +291,22 @@ public class UITest {
     @Test
     @DisplayName("19. Короткий CVC")
     void shouldErrorShortCVC() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), "12");
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCvcField(), "CVC должен содержать 3 цифры");
+        fillAndSubmitPayment(DataGenerator.cardWithCvc("12"));
+        paymentPage.shouldSeeCvcFieldError("CVC должен содержать 3 цифры");
     }
 
     @Test
     @DisplayName("20. Буквы в CVC")
     void shouldErrorLettersCVC() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), "abc");
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCvcField(), "CVC должен содержать 3 цифры");
+        fillAndSubmitPayment(DataGenerator.cardWithCvc("abc"));
+        paymentPage.shouldSeeCvcFieldError("CVC должен содержать 3 цифры");
     }
 
     @Test
     @DisplayName("21. Пустой CVC")
     void shouldErrorEmptyCVC() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                DataGenerator.owner(), "");
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getCvcField(), "Поле обязательно для заполнения");
+        fillAndSubmitPayment(DataGenerator.cardWithCvc(""));
+        paymentPage.shouldSeeCvcFieldError("Поле обязательно для заполнения");
     }
 
     // ----------------------
@@ -293,53 +314,59 @@ public class UITest {
     // ----------------------
 
     @Test
-    @DisplayName("22. Пустой владелец карты")
+    @DisplayName("22. Пустой владелец")
     void shouldErrorEmptyOwner() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                "", DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getOwnerField(), "Поле обязательно для заполнения");
+        fillAndSubmitPayment(DataGenerator.cardWithOwner(""));
+        paymentPage.shouldSeeOwnerFieldError("Поле обязательно для заполнения");
     }
 
     @Test
-    @DisplayName("23. Буквы кириллицей в имени")
+    @DisplayName("23. Кириллица")
     void shouldErrorCyrillicOwner() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                "ИВАН ПЕТРОВ", DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getOwnerField(), "Имя может содержать только латинские буквы");
+        var approved = DataGenerator.approvedCard();
+        fillAndSubmitPayment(new DataGenerator.CardData(
+                approved.getNumber(),
+                approved.getMonth(),
+                approved.getYear(),
+                DataGenerator.cyrillicOwner(),
+                approved.getCvc()
+        ));
+        paymentPage.shouldSeeOwnerFieldError("Имя может содержать только латинские буквы");
     }
 
     @Test
-    @DisplayName("24. Спецсимволы в имени")
+    @DisplayName("24. Спецсимволы")
     void shouldErrorSpecialSymbolsOwner() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                "IVAN123!@", DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getOwnerField(), "Имя может содержать только буквы");
+        var approved = DataGenerator.approvedCard();
+        fillAndSubmitPayment(new DataGenerator.CardData(
+                approved.getNumber(),
+                approved.getMonth(),
+                approved.getYear(),
+                DataGenerator.specialOwner(),
+                approved.getCvc()
+        ));
+        paymentPage.shouldSeeOwnerFieldError("Имя может содержать только буквы");
     }
 
     @Test
-    @DisplayName("25. Очень короткое имя владельца")
+    @DisplayName("25. Короткое имя")
     void shouldErrorTooShortOwner() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                "A", DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getOwnerField(), "Имя слишком короткое");
+        fillAndSubmitPayment(DataGenerator.cardWithOwner("A"));
+        paymentPage.shouldSeeOwnerFieldError("Имя слишком короткое");
     }
 
     @Test
-    @DisplayName("26. Очень длинное имя владельца")
+    @DisplayName("26. Длинное имя")
     void shouldErrorTooLongOwner() {
-        var data = new DataGenerator.CardData(DataGenerator.APPROVED_CARD,
-                DataGenerator.validMonth(), DataGenerator.validYear(),
-                "A".repeat(51), DataGenerator.validCvc());
-        fillAndSubmitPayment(data);
-        paymentPage.shouldSeeFieldError(paymentPage.getOwnerField(), "Имя слишком длинное");
+        var approved = DataGenerator.approvedCard();
+        fillAndSubmitPayment(new DataGenerator.CardData(
+                approved.getNumber(),
+                approved.getMonth(),
+                approved.getYear(),
+                DataGenerator.longOwner(), // длинное имя
+                approved.getCvc()
+        ));
+        paymentPage.shouldSeeOwnerFieldError("Имя слишком длинное");
     }
 
     // ----------------------
@@ -349,10 +376,7 @@ public class UITest {
     @Test
     @DisplayName("27. Кнопка блокируется и показывает спиннер при отправке")
     void shouldShowLoadingStateWhileSubmitting() {
-        var data = DataGenerator.approvedCard();
-        openPayment();
-        paymentPage.fillCardForm(data);
-        paymentPage.submit();
+        fillAndSubmitPayment(DataGenerator.approvedCard());
         paymentPage.shouldShowLoadingState();
     }
 }

@@ -1,8 +1,10 @@
 package ru.netology.data;
 
 import com.github.javafaker.Faker;
+import lombok.Value;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 public class DataGenerator {
@@ -12,20 +14,23 @@ public class DataGenerator {
     public static final String APPROVED_CARD = "1111 2222 3333 4444";
     public static final String DECLINED_CARD = "5555 6666 7777 8888";
 
+    private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MM");
+    private static final DateTimeFormatter YEAR_FORMAT = DateTimeFormatter.ofPattern("yy");
+
     public static String validMonth() {
-        return String.format("%02d", LocalDate.now().getMonthValue());
+        return LocalDate.now().format(MONTH_FORMAT);
     }
 
     public static String validYear() {
-        return String.format("%02d", LocalDate.now().plusYears(1).getYear() % 100);
+        return LocalDate.now().plusYears(1).format(YEAR_FORMAT);
     }
 
     public static String expiredYear() {
-        return String.format("%02d", LocalDate.now().minusYears(1).getYear() % 100);
+        return LocalDate.now().minusYears(1).format(YEAR_FORMAT);
     }
 
     public static String futureYear() {
-        return String.format("%02d", LocalDate.now().plusYears(7).getYear() % 100);
+        return LocalDate.now().plusYears(7).format(YEAR_FORMAT);
     }
 
     public static String validCvc() {
@@ -38,32 +43,16 @@ public class DataGenerator {
                 + faker.name().lastName().toUpperCase(Locale.ROOT);
     }
 
+    @Value
     public static class CardData {
-        public final String number;
-        public final String month;
-        public final String year;
-        public final String owner;
-        public final String cvc;
-
-        public CardData(String number, String month, String year, String owner, String cvc) {
-            this.number = number;
-            this.month = month;
-            this.year = year;
-            this.owner = owner;
-            this.cvc = cvc;
-        }
-
-        @Override
-        public String toString() {
-            return "CardData{" +
-                    "number='" + number + '\'' +
-                    ", month='" + month + '\'' +
-                    ", year='" + year + '\'' +
-                    ", owner='" + owner + '\'' +
-                    ", cvc='" + cvc + '\'' +
-                    '}';
-        }
+        String number;
+        String month;
+        String year;
+        String owner;
+        String cvc;
     }
+
+    // Позитивные сценарии
 
     public static CardData approvedCard() {
         return new CardData(
@@ -78,6 +67,122 @@ public class DataGenerator {
     public static CardData declinedCard() {
         return new CardData(
                 DECLINED_CARD,
+                validMonth(),
+                validYear(),
+                owner(),
+                validCvc()
+        );
+    }
+
+    // Негативные сценарии
+
+    public static String invalidCardNumber() {
+        return faker.number().digits(16);
+    }
+
+    public static String shortCardNumber() {
+        return faker.number().digits(12);
+    }
+
+    public static String longCardNumber() {
+        return faker.number().digits(20);
+    }
+
+    public static String empty() {
+        return "";
+    }
+
+    public static String spacesCardNumber() {
+        return " 1111 2222 3333 4444 ";
+    }
+
+    public static String specialSymbolsCardNumber() {
+        return "#@# $%^ &*()";
+    }
+
+    public static String cyrillicOwner() {
+        return "ИВАН ПЕТРОВ";
+    }
+
+    public static String specialOwner() {
+        return "IVAN123!@";
+    }
+
+    public static String shortOwner() {
+        return "A";
+    }
+
+    public static String longOwner() {
+        return "A".repeat(51);
+    }
+
+    public static String emptyOwner() {
+        return "";
+    }
+
+    public static CardData cardWithMonth(String month) {
+        return new CardData(
+                APPROVED_CARD,
+                month,
+                validYear(),
+                owner(),
+                validCvc()
+        );
+    }
+
+    public static CardData cardWithYear(String year) {
+        return new CardData(
+                APPROVED_CARD,
+                validMonth(),
+                year,
+                owner(),
+                validCvc()
+        );
+    }
+
+    public static CardData cardWithCvc(String cvc) {
+        return new CardData(
+                APPROVED_CARD,
+                validMonth(),
+                validYear(),
+                owner(),
+                cvc
+        );
+    }
+
+    public static CardData cardWithOwner(String owner) {
+        return new CardData(
+                APPROVED_CARD,
+                validMonth(),
+                validYear(),
+                owner,
+                validCvc()
+        );
+    }
+
+    public static CardData cardWithSpaces() {
+        return new CardData(
+                " 1111 2222 3333 4444 ",
+                validMonth(),
+                validYear(),
+                owner(),
+                validCvc()
+        );
+    }
+
+    public static CardData cardWithSymbols() {
+        return new CardData(
+                "#@# $%^ &*()",
+                validMonth(),
+                validYear(),
+                owner(),
+                validCvc()
+        );
+    }
+
+    public static CardData placeholderCard() {
+        return new CardData(
+                "0000 0000 0000 0000",
                 validMonth(),
                 validYear(),
                 owner(),
