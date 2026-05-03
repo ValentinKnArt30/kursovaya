@@ -22,8 +22,8 @@ jobs:
       - name: Start MySQL
         run: docker compose up -d mysql
 
-      - name: Waiting for container start
-      - run: sleep 30
+      - name: Wait DB
+        run: sleep 25
 
       - name: Start app
         run: |
@@ -56,8 +56,8 @@ jobs:
       - name: Start PostgreSQL
         run: docker compose up -d postgres
 
-      - name: Waiting for container start
-      - run: sleep 30
+      - name: Wait DB
+        run: sleep 25
 
       - name: Start app
         run: |
